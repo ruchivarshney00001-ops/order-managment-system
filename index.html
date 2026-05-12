@@ -3,74 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ultimate Order Tracker</title>
+    <title>OMNI Delivery Pro</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 500px; margin-bottom: 15px; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; max-width: 500px; margin-bottom: 15px; }
-        .stat-card { background: white; padding: 10px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .stat-card b { display: block; font-size: 18px; color: #007bff; }
-        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .filter-btn { padding: 8px; font-size: 12px; background: #6c757d; margin: 2px; width: auto; display: inline-block; }
-        .details-box { display: none; background: #fff3cd; padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 5px solid #ffc107; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
-        th { background: #f8f9fa; }
-        .status-p { color: #dc3545; font-weight: bold; }
-        .status-r { color: #28a745; font-weight: bold; }
-        #reader { width: 100%; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
+        :root {
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --primary: #6366f1;
+            --pending: #ef4444;
+            --success: #10b981;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Modern Dashboard Stats */
+        .stats-wrapper {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 600px;
+            margin: 15px 0;
+        }
+
+        .stat-item {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 16px;
+            text-align: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .stat-item b {
+            display: block;
+            font-size: 22px;
+            color: var(--primary);
+            margin-top: 5px;
+        }
+
+        /* Glassmorphism Navigation */
+        .nav-container {
+            position: sticky;
+            top: 10px;
+            z-index: 1000;
+            width: 100%;
+            max-width: 600px;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 20px;
+            padding: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .filter-tabs {
+            display: flex;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .tab {
+            flex: 1;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--text-sub);
+            background: transparent;
+        }
+
+        .tab.active {
+            background: var(--card-bg);
+            color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* Premium Card Design */
+        .order-card {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 600px;
+            padding: 24px;
+            border-radius: 24px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            border: 1px solid #e2e8f0;
+            position: relative;
+            transition: transform 0.2s;
+        }
+
+        .order-card:active { transform: scale(0.98); }
+
+        .status-pill {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-pending { background: #fee2e2; color: var(--pending); }
+        .status-done { background: #d1fae5; color: var(--success); }
+
+        .id-text {
+            font-family: 'SF Mono', monospace;
+            font-size: 14px;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 12px;
+            display: block;
+            margin: 10px 0;
+            color: var(--text-main);
+            word-break: break-all;
+            border: 1px solid #f1f5f9;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .label { font-size: 11px; color: var(--text-sub); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+        .value { font-size: 16px; font-weight: 600; display: block; margin-top: 2px; }
+
+        /* Buttons & Inputs */
+        input {
+            width: 100%;
+            padding: 14px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 14px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        input:focus { outline: none; border-color: var(--primary); }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 16px;
+            font-weight: 700;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+        }
+
+        .btn-success { background: var(--success); margin-top: 15px; }
+
+        #reader { width: 100%; border-radius: 20px; overflow: hidden; margin-bottom: 15px; }
+
+        .time { font-size: 11px; color: var(--text-sub); margin-top: 15px; text-align: right; }
     </style>
 </head>
 <body>
 
-    <div class="stats-grid">
-        <div class="stat-card">Total<b id="count-total">0</b></div>
-        <div class="stat-card">Pending<b id="count-pending" style="color:red">0</b></div>
-        <div class="stat-card">Received<b id="count-received" style="color:green">0</b></div>
+    <div class="stats-wrapper">
+        <div class="stat-item" style="border-top: 4px solid var(--primary)">Total <b id="stat-t">0</b></div>
+        <div class="stat-item" style="border-top: 4px solid var(--pending)">Pending <b id="stat-p">0</b></div>
+        <div class="stat-item" style="border-top: 4px solid var(--success)">Done <b id="stat-d">0</b></div>
     </div>
 
-    <div id="admin-panel" class="card" style="display:none">
-        <h3 style="margin:0">New Entry</h3>
-        <input type="text" id="orderId" placeholder="Order ID">
-        <input type="text" id="boyName" placeholder="Boy Name">
-        <input type="text" id="deliveryCode" placeholder="Delivery Code">
-        <button onclick="addOrder()">Save Order</button>
+    <div class="nav-container">
+        <div class="filter-tabs">
+            <button class="tab active" onclick="updateFilter('all', this)">All</button>
+            <button class="tab" onclick="updateFilter('Pending', this)">Pending</button>
+            <button class="tab" onclick="updateFilter('Received', this)">Received</button>
+        </div>
+        <input type="text" id="search" placeholder="🔍 Search Order ID..." oninput="handleSearch(this.value)">
     </div>
 
-    <div class="card">
-        <h3>Verify Delivery</h3>
+    <div id="admin" class="order-card" style="display:none; border: 2px dashed var(--primary); background: #fdfdfd;">
+        <h3 style="margin:0 0 10px 0">New Dispatch</h3>
+        <input type="text" id="in-id" placeholder="Order ID">
+        <input type="text" id="in-name" placeholder="Delivery Boy">
+        <input type="text" id="in-code" placeholder="Delivery OTP">
+        <button class="btn-primary" onclick="pushOrder()">Dispatch Order</button>
+    </div>
+
+    <div class="order-card">
         <div id="reader"></div>
-        <button onclick="startScanner()" style="background:#6c757d; margin-bottom:10px">Open Scanner</button>
-        <input type="text" id="manualSearch" placeholder="Search (Enter last 4-5 digits)..." oninput="partialSearch(this.value)">
-        
-        <div id="details" class="details-box">
-            <p><strong>ID:</strong> <span id="d-id"></span></p>
-            <p><strong>Boy:</strong> <span id="d-name"></span></p>
-            <p><strong>Code:</strong> <span id="d-code" style="color:red; font-size:20px; font-weight:bold"></span></p>
-            <button onclick="receiveOrder()" style="background:#28a745">Mark Received ✅</button>
-        </div>
+        <button class="btn-primary" style="background:#475569" onclick="openCam()">📷 Scan QR Code</button>
     </div>
 
-    <div class="card" style="max-width: 600px;">
-        <h3>Order Report</h3>
-        <div style="text-align:center; margin-bottom:10px;">
-            <button class="filter-btn" onclick="renderTable('all')">All</button>
-            <button class="filter-btn" onclick="renderTable('Pending')">Pending</button>
-            <button class="filter-btn" onclick="renderTable('Received')">Received</button>
-        </div>
-        <div style="overflow-x:auto;">
-            <table id="orderTable">
-                <thead>
-                    <tr><th>ID (Last 5)</th><th>Boy</th><th>Code</th><th>Status</th><th>Action</th></tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
-        </div>
-    </div>
+    <div id="list" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
 
     <script>
         const firebaseConfig = {
@@ -85,76 +229,79 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let allOrders = {};
-        let activeId = "";
+        let data = {};
+        let filter = 'all';
 
-        // Admin check
-        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('admin-panel').style.display = 'block';
+        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('admin').style.display = 'block';
 
-        // 1. Partial Search (Last 4-5 digits)
-        function partialSearch(input) {
-            if(input.length < 3) { document.getElementById('details').style.display = 'none'; return; }
-            const match = Object.keys(allOrders).find(id => id.endsWith(input));
-            if(match) showDetails(match);
-            else document.getElementById('details').style.display = 'none';
-        }
-
-        function showDetails(id) {
-            const o = allOrders[id];
-            if(o.status === 'Pending') {
-                activeId = id;
-                document.getElementById('details').style.display = 'block';
-                document.getElementById('d-id').innerText = id;
-                document.getElementById('d-name').innerText = o.name;
-                document.getElementById('d-code').innerText = o.code;
-            }
-        }
-
-        // 2. Data Sync & Stats
         db.ref('orders').on('value', (snap) => {
-            allOrders = snap.val() || {};
-            let t = 0, p = 0, r = 0;
-            for(let k in allOrders) {
-                t++;
-                allOrders[k].status === 'Pending' ? p++ : r++;
-            }
-            document.getElementById('count-total').innerText = t;
-            document.getElementById('count-pending').innerText = p;
-            document.getElementById('count-received').innerText = r;
-            renderTable('all');
+            data = snap.val() || {};
+            renderUI();
         });
 
-        // 3. Render Table with Filters
-        function renderTable(filter) {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = "";
-            Object.keys(allOrders).reverse().forEach(id => {
-                const o = allOrders[id];
-                if(filter === 'all' || o.status === filter) {
-                    tbody.innerHTML += `
-                        <tr>
-                            <td>...${id.slice(-5)}</td>
-                            <td>${o.name}</td>
-                            <td>${o.code}</td>
-                            <td class="${o.status === 'Pending' ? 'status-p' : 'status-r'}">${o.status}</td>
-                            <td><button style="padding:4px; font-size:10px; background:red" onclick="deleteOrder('${id}')">Del</button></td>
-                        </tr>`;
-                }
+        function renderUI() {
+            const list = document.getElementById('list');
+            list.innerHTML = "";
+            let t=0, p=0, d=0;
+
+            Object.keys(data).sort((a,b) => (data[b].ts || 0) - (data[a].ts || 0)).forEach(id => {
+                const o = data[id];
+                t++; o.status === 'Pending' ? p++ : d++;
+
+                if(filter !== 'all' && o.status !== filter) return;
+
+                const isDone = o.status === 'Received';
+                list.innerHTML += `
+                    <div class="order-card" id="c-${id}">
+                        <div class="status-pill ${isDone?'status-done':'status-pending'}">${o.status}</div>
+                        <span class="label">Invoice ID</span>
+                        <span class="id-text">${id}</span>
+                        <div class="info-grid">
+                            <div><span class="label">Agent</span><span class="value">${o.name}</span></div>
+                            <div><span class="label">Secret Code</span><span class="value" style="color:var(--pending);font-size:20px">${o.code}</span></div>
+                        </div>
+                        ${!isDone ? `<button class="btn-primary btn-success" onclick="mark('${id}')">Verify & Receive</button>` : ''}
+                        <div class="time">${new Date(o.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} | ${new Date(o.ts).toLocaleDateString()}</div>
+                        <button onclick="rem('${id}')" style="position:absolute; bottom:20px; left:20px; background:none; border:none; color:#cbd5e1; cursor:pointer">Delete</button>
+                    </div>`;
+            });
+            document.getElementById('stat-t').innerText = t;
+            document.getElementById('stat-p').innerText = p;
+            document.getElementById('stat-d').innerText = d;
+        }
+
+        function handleSearch(val) {
+            document.querySelectorAll('.order-card[id^="c-"]').forEach(el => {
+                const id = el.id.replace('c-', '');
+                el.style.display = id.includes(val) ? 'block' : 'none';
             });
         }
 
-        // Actions
-        function addOrder() {
-            const id = document.getElementById('orderId').value;
-            if(id) db.ref('orders/' + id).set({ id, name: document.getElementById('boyName').value, code: document.getElementById('deliveryCode').value, status: 'Pending' });
-            document.querySelectorAll('input').forEach(i => i.value = '');
+        function updateFilter(f, btn) {
+            filter = f;
+            document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderUI();
         }
-        function receiveOrder() { db.ref('orders/' + activeId).update({ status: 'Received' }); document.getElementById('details').style.display = 'none'; }
-        function deleteOrder(id) { if(confirm("Delete?")) db.ref('orders/' + id).remove(); }
-        
-        function startScanner() {
+
+        function pushOrder() {
+            const id = document.getElementById('in-id').value.trim();
+            const name = document.getElementById('in-name').value.trim();
+            const code = document.getElementById('in-code').value.trim();
+            if(id && name && code) {
+                db.ref('orders/' + id).set({ id, name, code, status: 'Pending', ts: Date.now() });
+                document.querySelectorAll('input').forEach(i => i.value = '');
+            }
+        }
+
+        function mark(id) { if(confirm("Confirm delivery?")) db.ref('orders/' + id).update({ status: 'Received' }); }
+        function rem(id) { if(confirm("Permanently delete?")) db.ref('orders/' + id).remove(); }
+
+        function openCam() {
             const scanner = new Html5Qrcode("reader");
-            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => { showDetails(text); scanner.stop(); });
+            scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
+                if(data[text]) { mark(text); scanner.stop(); } else { alert("ID not found!"); }
+            });
         }
     </script>
 </body>
