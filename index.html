@@ -3,42 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Order Tracker</title>
+    <title>Order Tracker</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; }
-        h2 { color: #333; text-align: center; margin-top: 0; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
-        button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 16px; }
-        button:hover { background-color: #0056b3; }
-        .order-list-item { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #ff4757; width: 100%; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .order-list-item.received { border-left-color: #2ed573; background-color: #f0fff4; }
-        .receive-btn { background-color: #2ed573; margin-top: 10px; }
-        .receive-btn:hover { background-color: #26af5d; }
-        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-top: 5px; }
-        .pending { background: #ffeaa7; color: #d6a01d; }
-        .done { background: #c1f0d1; color: #1e8449; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        /* Admin Box Styling */
+        #admin-panel { 
+            display: none; /* By default chhupa rahega */
+            background: white; padding: 20px; border-radius: 12px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; 
+        }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        
+        /* Order List Styling */
+        .order-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #ff4757; width: 100%; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .order-card.received { border-left-color: #2ed573; background: #f0fff4; opacity: 0.7; }
+        .receive-btn { background: #2ed573; margin-top: 10px; }
+        
+        /* Chota button admin panel kholne ke liye */
+        .toggle-admin { background: none; color: #888; font-size: 12px; width: auto; margin-bottom: 10px; text-decoration: underline; }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Add Order</h2>
-        <input type="text" id="orderId" placeholder="Order ID (e.g. 101)">
+    <button class="toggle-admin" onclick="toggleAdmin()">+ Admin Panel (Click to Add Order)</button>
+
+    <div id="admin-panel">
+        <h3 style="margin-top:0">Add New Order</h3>
+        <input type="text" id="orderId" placeholder="Order ID">
         <input type="text" id="boyName" placeholder="Delivery Boy Name">
-        <input type="text" id="deliveryCode" placeholder="Delivery Code (e.g. 5588)">
+        <input type="text" id="deliveryCode" placeholder="Delivery Code">
         <button onclick="addOrder()">Send to Phone</button>
     </div>
 
-    <div id="ordersDisplay" style="width: 100%; max-width: 400px;">
-        <h3 style="text-align: center; color: #555;">Live Orders</h3>
-    </div>
+    <div id="ordersDisplay" style="width: 100%; max-width: 400px;"></div>
 
     <script>
-        // Aapki Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyDdCyXVO0UzadOwy903RAm6sop8PGroTSw",
             authDomain: "ordermanagment-4f762.firebaseapp.com",
@@ -49,63 +52,46 @@
             appId: "1:802753575667:web:a6ba2ca8f7f5220865d586"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Data add karne ka function
+        // Admin Panel hide/show karne ke liye
+        function toggleAdmin() {
+            const panel = document.getElementById('admin-panel');
+            panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+        }
+
         function addOrder() {
             const id = document.getElementById('orderId').value;
             const name = document.getElementById('boyName').value;
             const code = document.getElementById('deliveryCode').value;
-
             if (id && name && code) {
-                db.ref('orders/' + id).set({
-                    id: id,
-                    name: name,
-                    code: code,
-                    status: 'Pending'
-                }).then(() => {
-                    // Clear inputs
-                    document.getElementById('orderId').value = '';
-                    document.getElementById('boyName').value = '';
-                    document.getElementById('deliveryCode').value = '';
-                });
-            } else {
-                alert("Saari details bhariye!");
+                db.ref('orders/' + id).set({ id, name, code, status: 'Pending' });
+                document.querySelectorAll('input').forEach(i => i.value = '');
+                toggleAdmin(); // Order add hone ke baad panel band ho jayega
             }
         }
 
-        // Real-time listener (Data dikhane ke liye)
         db.ref('orders').on('value', (snapshot) => {
             const display = document.getElementById('ordersDisplay');
-            display.innerHTML = '<h3 style="text-align: center; color: #555;">Live Orders</h3>';
+            display.innerHTML = '<h3 style="text-align: center; color: #555;">Active Orders</h3>';
             const data = snapshot.val();
-
             if (data) {
                 Object.keys(data).reverse().forEach(key => {
                     const order = data[key];
                     const isReceived = order.status === 'Received';
-                    
-                    const orderHtml = `
-                        <div class="order-list-item ${isReceived ? 'received' : ''}">
-                            <b>Order ID:</b> ${order.id} <br>
-                            <b>Boy:</b> ${order.name} <br>
-                            <b>Code:</b> <span style="color:#d63031; font-weight:bold;">${order.code}</span> <br>
-                            <span class="status-badge ${isReceived ? 'done' : 'pending'}">${order.status}</span>
-                            ${!isReceived ? `<button class="receive-btn" onclick="markReceived('${order.id}')">Receive Order</button>` : ''}
-                        </div>
-                    `;
-                    display.innerHTML += orderHtml;
+                    display.innerHTML += `
+                        <div class="order-card ${isReceived ? 'received' : ''}">
+                            <b>ID:</b> ${order.id} | <b>Code:</b> ${order.code}<br>
+                            <b>Delivery Boy:</b> ${order.name}<br>
+                            ${!isReceived ? `<button class="receive-btn" onclick="markReceived('${order.id}')">Receive Order</button>` : '<b>Status: Received ✅</b>'}
+                        </div>`;
                 });
             }
         });
 
-        // Status update karne ka function
         function markReceived(id) {
-            db.ref('orders/' + id).update({
-                status: 'Received'
-            });
+            db.ref('orders/' + id).update({ status: 'Received' });
         }
     </script>
 </body>
