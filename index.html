@@ -2,86 +2,158 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Secure Delivery System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advance Secure Delivery</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
+    
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
-        .details-box { display: none; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba; margin-top: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; box-sizing: border-box; }
+        h3 { margin-top: 0; color: #333; text-align: center; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
+        button:hover { background: #0056b3; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 10px; }
+        .details-box { display: none; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba; margin-top: 15px; animation: fadeIn 0.5s; }
+        .data-label { font-weight: bold; color: #856404; }
+        .data-value { font-size: 18px; color: #000; margin-bottom: 8px; display: block; }
+        .receive-btn { background: #28a745; margin-top: 15px; }
+        .receive-btn:hover { background: #218838; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-    <!-- Admin Entry -->
     <div id="admin-panel" style="display:none;" class="card">
-        <h3>Add Order</h3>
+        <h3>Add New Order</h3>
         <input type="text" id="orderId" placeholder="Order ID">
         <input type="text" id="boyName" placeholder="Delivery Boy Name">
-        <input type="text" id="deliveryCode" placeholder="Delivery Code">
-        <button onclick="addOrder()">Add Order</button>
+        <input type="text" id="deliveryCode" placeholder="Delivery Code (OTP)">
+        <button onclick="addOrder()">Save to Database</button>
     </div>
 
-    <!-- Scanner / Search -->
     <div class="card">
-        <h3>Scan or Search Order</h3>
-        <div id="reader"></div>
-        <input type="text" id="manualSearch" placeholder="Search Order ID..." oninput="fetchOrder(this.value)">
+        <h3>Verify Delivery</h3>
         
-        <!-- Order Details Show Hogi -->
+        <div id="reader"></div>
+        <button id="start-cam-btn" onclick="startScanner()" style="background: #6c757d; margin-bottom: 15px;">Open QR Scanner</button>
+        
+        <p style="text-align: center; color: #888;">--- OR ---</p>
+        
+        <input type="text" id="manualSearch" placeholder="Type Order ID to Search..." oninput="fetchOrder(this.value)">
+
         <div id="details" class="details-box">
-            <p><strong>ID:</strong> <span id="d-id"></span></p>
-            <p><strong>Boy:</strong> <span id="d-name"></span></p>
-            <p><strong>Code:</strong> <span id="d-code" style="color:red; font-size:20px; font-weight:bold;"></span></p>
-            <button id="recv-btn" onclick="receiveOrder()" style="background:#28a745">Receive Order</button>
+            <span class="data-label">Order ID:</span>
+            <span id="d-id" class="data-value"></span>
+            
+            <span class="data-label">Delivery Boy:</span>
+            <span id="d-name" class="data-value"></span>
+            
+            <span class="data-label">Delivery Code:</span>
+            <span id="d-code" class="data-value" style="color: #d63031; font-size: 24px;"></span>
+            
+            <button class="receive-btn" onclick="receiveOrder()">Confirm & Receive Order</button>
         </div>
     </div>
 
     <script>
-        const firebaseConfig = { /* Wahi Config yahan paste karein */ };
+        // --- APNI FIREBASE CONFIG YAHAN DALEIN ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyDdCyXVO0UzadOwy903RAm6sop8PGroTSw",
+            authDomain: "ordermanagment-4f762.firebaseapp.com",
+            databaseURL: "https://ordermanagment-4f762-default-rtdb.firebaseio.com",
+            projectId: "ordermanagment-4f762",
+            storageBucket: "ordermanagment-4f762.firebasestorage.app",
+            messagingSenderId: "802753575667",
+            appId: "1:802753575667:web:a6ba2ca8f7f5220865d586"
+        };
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Admin check
-        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('admin-panel').style.display = 'block';
+        // 1. Admin Panel Check
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            document.getElementById('admin-panel').style.display = 'block';
+        }
 
-        const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
-            document.getElementById('manualSearch').value = text;
-            fetchOrder(text);
-        });
+        // 2. QR Scanner Logic
+        function startScanner() {
+            document.getElementById('start-cam-btn').style.display = 'none';
+            const html5QrCode = new Html5Qrcode("reader");
+            html5QrCode.start(
+                { facingMode: "environment" }, 
+                { fps: 10, qrbox: 250 },
+                (decodedText) => {
+                    document.getElementById('manualSearch').value = decodedText;
+                    fetchOrder(decodedText);
+                    if (navigator.vibrate) navigator.vibrate(100);
+                }
+            ).catch(err => {
+                alert("Camera error! Please allow camera permissions.");
+                document.getElementById('start-cam-btn').style.display = 'block';
+            });
+        }
 
+        // 3. Search & Fetch Logic
         let activeOrderId = "";
 
         function fetchOrder(id) {
+            if(!id) {
+                document.getElementById('details').style.display = 'none';
+                return;
+            }
             db.ref('orders/' + id).once('value', (snap) => {
                 const order = snap.val();
                 if(order && order.status === 'Pending') {
                     activeOrderId = id;
                     document.getElementById('details').style.display = 'block';
                     document.getElementById('d-id').innerText = order.id;
-                    document.getElementById('d-name').innerText = order.name;
+                    document.getElementById('d-name').innerText = order.boy_name || order.name;
                     document.getElementById('d-code').innerText = order.code;
+                } else if (order && order.status === 'Received') {
+                    alert("Ye order pehle hi receive ho chuka hai!");
+                    document.getElementById('details').style.display = 'none';
                 } else {
                     document.getElementById('details').style.display = 'none';
                 }
             });
         }
 
+        // 4. Receive Function
         function receiveOrder() {
-            db.ref('orders/' + activeOrderId).update({ status: 'Received' });
-            alert("Order Received Successfully!");
-            location.reload();
+            if(confirm("Kya aapne delivery code verify kar liya hai?")) {
+                db.ref('orders/' + activeOrderId).update({
+                    status: 'Received',
+                    receivedTime: new Date().toLocaleString()
+                }).then(() => {
+                    alert("Order SuccessFully Received!");
+                    location.reload();
+                });
+            }
         }
 
+        // 5. Admin Add Function
         function addOrder() {
             const id = document.getElementById('orderId').value;
-            db.ref('orders/' + id).set({ id, name: document.getElementById('boyName').value, code: document.getElementById('deliveryCode').value, status: 'Pending' });
-            alert("Added!");
+            const name = document.getElementById('boyName').value;
+            const code = document.getElementById('deliveryCode').value;
+            
+            if(id && name && code) {
+                db.ref('orders/' + id).set({
+                    id: id,
+                    name: name,
+                    code: code,
+                    status: 'Pending'
+                }).then(() => {
+                    alert("Order Added!");
+                    document.querySelectorAll('input').forEach(i => i.value = '');
+                });
+            } else {
+                alert("Please fill all details!");
+            }
         }
     </script>
 </body>
