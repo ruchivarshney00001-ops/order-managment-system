@@ -3,43 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Order Tracker</title>
+    <title>Order Manager</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
-    
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        /* Admin Box Styling */
-        #admin-panel { 
-            display: none; /* By default chhupa rahega */
-            background: white; padding: 20px; border-radius: 12px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; 
-        }
+        body { font-family: sans-serif; background: #f0f2f5; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        /* Admin panel by default hidden rahega */
+        #admin-panel { display: none; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        
-        /* Order List Styling */
-        .order-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #ff4757; width: 100%; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .order-card.received { border-left-color: #2ed573; background: #f0fff4; opacity: 0.7; }
+        .order-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #ff4757; width: 100%; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;}
+        .order-card.received { border-left-color: #2ed573; background: #f0fff4; }
         .receive-btn { background: #2ed573; margin-top: 10px; }
-        
-        /* Chota button admin panel kholne ke liye */
-        .toggle-admin { background: none; color: #888; font-size: 12px; width: auto; margin-bottom: 10px; text-decoration: underline; }
+        .del-btn { position: absolute; top: 10px; right: 10px; background: none; color: #ccc; width: auto; padding: 0; font-size: 18px; }
     </style>
 </head>
 <body>
 
-    <button class="toggle-admin" onclick="toggleAdmin()">+ Admin Panel (Click to Add Order)</button>
-
     <div id="admin-panel">
-        <h3 style="margin-top:0">Add New Order</h3>
+        <h3 style="margin:0">Add New Order</h3>
         <input type="text" id="orderId" placeholder="Order ID">
         <input type="text" id="boyName" placeholder="Delivery Boy Name">
         <input type="text" id="deliveryCode" placeholder="Delivery Code">
         <button onclick="addOrder()">Send to Phone</button>
     </div>
 
-    <div id="ordersDisplay" style="width: 100%; max-width: 400px;"></div>
+    <div id="ordersDisplay" style="width: 100%; max-width: 400px;">
+        <h3 style="text-align: center; color: #555;">Live Orders</h3>
+    </div>
 
     <script>
         const firebaseConfig = {
@@ -55,10 +46,10 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Admin Panel hide/show karne ke liye
-        function toggleAdmin() {
-            const panel = document.getElementById('admin-panel');
-            panel.style.display = (panel.style.display === 'block') ? 'none' : 'block';
+        // CHECK ADMIN: Agar URL me ?admin=true hai to hi box dikhao
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('admin') === 'true') {
+            document.getElementById('admin-panel').style.display = 'block';
         }
 
         function addOrder() {
@@ -68,13 +59,12 @@
             if (id && name && code) {
                 db.ref('orders/' + id).set({ id, name, code, status: 'Pending' });
                 document.querySelectorAll('input').forEach(i => i.value = '');
-                toggleAdmin(); // Order add hone ke baad panel band ho jayega
             }
         }
 
         db.ref('orders').on('value', (snapshot) => {
             const display = document.getElementById('ordersDisplay');
-            display.innerHTML = '<h3 style="text-align: center; color: #555;">Active Orders</h3>';
+            display.innerHTML = '<h3 style="text-align: center; color: #555;">Live Orders</h3>';
             const data = snapshot.val();
             if (data) {
                 Object.keys(data).reverse().forEach(key => {
@@ -82,17 +72,18 @@
                     const isReceived = order.status === 'Received';
                     display.innerHTML += `
                         <div class="order-card ${isReceived ? 'received' : ''}">
-                            <b>ID:</b> ${order.id} | <b>Code:</b> ${order.code}<br>
-                            <b>Delivery Boy:</b> ${order.name}<br>
+                            <button class="del-btn" onclick="deleteOrder('${order.id}')">×</button>
+                            <b>ID:</b> ${order.id} <br>
+                            <b>Boy:</b> ${order.name} <br>
+                            <b>Code:</b> <span style="color:red; font-weight:bold;">${order.code}</span><br>
                             ${!isReceived ? `<button class="receive-btn" onclick="markReceived('${order.id}')">Receive Order</button>` : '<b>Status: Received ✅</b>'}
                         </div>`;
                 });
             }
         });
 
-        function markReceived(id) {
-            db.ref('orders/' + id).update({ status: 'Received' });
-        }
+        function markReceived(id) { db.ref('orders/' + id).update({ status: 'Received' }); }
+        function deleteOrder(id) { if(confirm("Delete karein?")) db.ref('orders/' + id).remove(); }
     </script>
 </body>
 </html>
