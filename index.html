@@ -3,63 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advance Secure Delivery</title>
+    <title>Ultimate Order Tracker</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; box-sizing: border-box; }
-        h3 { margin-top: 0; color: #333; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; transition: 0.3s; }
-        button:hover { background: #0056b3; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 10px; }
-        .details-box { display: none; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba; margin-top: 15px; animation: fadeIn 0.5s; }
-        .data-label { font-weight: bold; color: #856404; }
-        .data-value { font-size: 18px; color: #000; margin-bottom: 8px; display: block; }
-        .receive-btn { background: #28a745; margin-top: 15px; }
-        .receive-btn:hover { background: #218838; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); width: 100%; max-width: 500px; margin-bottom: 15px; }
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; width: 100%; max-width: 500px; margin-bottom: 15px; }
+        .stat-card { background: white; padding: 10px; border-radius: 8px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .stat-card b { display: block; font-size: 18px; color: #007bff; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 14px; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .filter-btn { padding: 8px; font-size: 12px; background: #6c757d; margin: 2px; width: auto; display: inline-block; }
+        .details-box { display: none; background: #fff3cd; padding: 15px; border-radius: 10px; margin-top: 10px; border-left: 5px solid #ffc107; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+        th, td { border: 1px solid #eee; padding: 8px; text-align: left; }
+        th { background: #f8f9fa; }
+        .status-p { color: #dc3545; font-weight: bold; }
+        .status-r { color: #28a745; font-weight: bold; }
+        #reader { width: 100%; border-radius: 10px; overflow: hidden; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="admin-panel" style="display:none;" class="card">
-        <h3>Add New Order</h3>
+    <div class="stats-grid">
+        <div class="stat-card">Total<b id="count-total">0</b></div>
+        <div class="stat-card">Pending<b id="count-pending" style="color:red">0</b></div>
+        <div class="stat-card">Received<b id="count-received" style="color:green">0</b></div>
+    </div>
+
+    <div id="admin-panel" class="card" style="display:none">
+        <h3 style="margin:0">New Entry</h3>
         <input type="text" id="orderId" placeholder="Order ID">
-        <input type="text" id="boyName" placeholder="Delivery Boy Name">
-        <input type="text" id="deliveryCode" placeholder="Delivery Code (OTP)">
-        <button onclick="addOrder()">Save to Database</button>
+        <input type="text" id="boyName" placeholder="Boy Name">
+        <input type="text" id="deliveryCode" placeholder="Delivery Code">
+        <button onclick="addOrder()">Save Order</button>
     </div>
 
     <div class="card">
         <h3>Verify Delivery</h3>
-        
         <div id="reader"></div>
-        <button id="start-cam-btn" onclick="startScanner()" style="background: #6c757d; margin-bottom: 15px;">Open QR Scanner</button>
+        <button onclick="startScanner()" style="background:#6c757d; margin-bottom:10px">Open Scanner</button>
+        <input type="text" id="manualSearch" placeholder="Search (Enter last 4-5 digits)..." oninput="partialSearch(this.value)">
         
-        <p style="text-align: center; color: #888;">--- OR ---</p>
-        
-        <input type="text" id="manualSearch" placeholder="Type Order ID to Search..." oninput="fetchOrder(this.value)">
-
         <div id="details" class="details-box">
-            <span class="data-label">Order ID:</span>
-            <span id="d-id" class="data-value"></span>
-            
-            <span class="data-label">Delivery Boy:</span>
-            <span id="d-name" class="data-value"></span>
-            
-            <span class="data-label">Delivery Code:</span>
-            <span id="d-code" class="data-value" style="color: #d63031; font-size: 24px;"></span>
-            
-            <button class="receive-btn" onclick="receiveOrder()">Confirm & Receive Order</button>
+            <p><strong>ID:</strong> <span id="d-id"></span></p>
+            <p><strong>Boy:</strong> <span id="d-name"></span></p>
+            <p><strong>Code:</strong> <span id="d-code" style="color:red; font-size:20px; font-weight:bold"></span></p>
+            <button onclick="receiveOrder()" style="background:#28a745">Mark Received ✅</button>
+        </div>
+    </div>
+
+    <div class="card" style="max-width: 600px;">
+        <h3>Order Report</h3>
+        <div style="text-align:center; margin-bottom:10px;">
+            <button class="filter-btn" onclick="renderTable('all')">All</button>
+            <button class="filter-btn" onclick="renderTable('Pending')">Pending</button>
+            <button class="filter-btn" onclick="renderTable('Received')">Received</button>
+        </div>
+        <div style="overflow-x:auto;">
+            <table id="orderTable">
+                <thead>
+                    <tr><th>ID (Last 5)</th><th>Boy</th><th>Code</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        // --- APNI FIREBASE CONFIG YAHAN DALEIN ---
         const firebaseConfig = {
             apiKey: "AIzaSyDdCyXVO0UzadOwy903RAm6sop8PGroTSw",
             authDomain: "ordermanagment-4f762.firebaseapp.com",
@@ -69,91 +82,79 @@
             messagingSenderId: "802753575667",
             appId: "1:802753575667:web:a6ba2ca8f7f5220865d586"
         };
-
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 1. Admin Panel Check
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === 'true') {
-            document.getElementById('admin-panel').style.display = 'block';
+        let allOrders = {};
+        let activeId = "";
+
+        // Admin check
+        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('admin-panel').style.display = 'block';
+
+        // 1. Partial Search (Last 4-5 digits)
+        function partialSearch(input) {
+            if(input.length < 3) { document.getElementById('details').style.display = 'none'; return; }
+            const match = Object.keys(allOrders).find(id => id.endsWith(input));
+            if(match) showDetails(match);
+            else document.getElementById('details').style.display = 'none';
         }
 
-        // 2. QR Scanner Logic
-        function startScanner() {
-            document.getElementById('start-cam-btn').style.display = 'none';
-            const html5QrCode = new Html5Qrcode("reader");
-            html5QrCode.start(
-                { facingMode: "environment" }, 
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    document.getElementById('manualSearch').value = decodedText;
-                    fetchOrder(decodedText);
-                    if (navigator.vibrate) navigator.vibrate(100);
-                }
-            ).catch(err => {
-                alert("Camera error! Please allow camera permissions.");
-                document.getElementById('start-cam-btn').style.display = 'block';
-            });
-        }
-
-        // 3. Search & Fetch Logic
-        let activeOrderId = "";
-
-        function fetchOrder(id) {
-            if(!id) {
-                document.getElementById('details').style.display = 'none';
-                return;
-            }
-            db.ref('orders/' + id).once('value', (snap) => {
-                const order = snap.val();
-                if(order && order.status === 'Pending') {
-                    activeOrderId = id;
-                    document.getElementById('details').style.display = 'block';
-                    document.getElementById('d-id').innerText = order.id;
-                    document.getElementById('d-name').innerText = order.boy_name || order.name;
-                    document.getElementById('d-code').innerText = order.code;
-                } else if (order && order.status === 'Received') {
-                    alert("Ye order pehle hi receive ho chuka hai!");
-                    document.getElementById('details').style.display = 'none';
-                } else {
-                    document.getElementById('details').style.display = 'none';
-                }
-            });
-        }
-
-        // 4. Receive Function
-        function receiveOrder() {
-            if(confirm("Kya aapne delivery code verify kar liya hai?")) {
-                db.ref('orders/' + activeOrderId).update({
-                    status: 'Received',
-                    receivedTime: new Date().toLocaleString()
-                }).then(() => {
-                    alert("Order SuccessFully Received!");
-                    location.reload();
-                });
+        function showDetails(id) {
+            const o = allOrders[id];
+            if(o.status === 'Pending') {
+                activeId = id;
+                document.getElementById('details').style.display = 'block';
+                document.getElementById('d-id').innerText = id;
+                document.getElementById('d-name').innerText = o.name;
+                document.getElementById('d-code').innerText = o.code;
             }
         }
 
-        // 5. Admin Add Function
+        // 2. Data Sync & Stats
+        db.ref('orders').on('value', (snap) => {
+            allOrders = snap.val() || {};
+            let t = 0, p = 0, r = 0;
+            for(let k in allOrders) {
+                t++;
+                allOrders[k].status === 'Pending' ? p++ : r++;
+            }
+            document.getElementById('count-total').innerText = t;
+            document.getElementById('count-pending').innerText = p;
+            document.getElementById('count-received').innerText = r;
+            renderTable('all');
+        });
+
+        // 3. Render Table with Filters
+        function renderTable(filter) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            Object.keys(allOrders).reverse().forEach(id => {
+                const o = allOrders[id];
+                if(filter === 'all' || o.status === filter) {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>...${id.slice(-5)}</td>
+                            <td>${o.name}</td>
+                            <td>${o.code}</td>
+                            <td class="${o.status === 'Pending' ? 'status-p' : 'status-r'}">${o.status}</td>
+                            <td><button style="padding:4px; font-size:10px; background:red" onclick="deleteOrder('${id}')">Del</button></td>
+                        </tr>`;
+                }
+            });
+        }
+
+        // Actions
         function addOrder() {
             const id = document.getElementById('orderId').value;
-            const name = document.getElementById('boyName').value;
-            const code = document.getElementById('deliveryCode').value;
-            
-            if(id && name && code) {
-                db.ref('orders/' + id).set({
-                    id: id,
-                    name: name,
-                    code: code,
-                    status: 'Pending'
-                }).then(() => {
-                    alert("Order Added!");
-                    document.querySelectorAll('input').forEach(i => i.value = '');
-                });
-            } else {
-                alert("Please fill all details!");
-            }
+            if(id) db.ref('orders/' + id).set({ id, name: document.getElementById('boyName').value, code: document.getElementById('deliveryCode').value, status: 'Pending' });
+            document.querySelectorAll('input').forEach(i => i.value = '');
+        }
+        function receiveOrder() { db.ref('orders/' + activeId).update({ status: 'Received' }); document.getElementById('details').style.display = 'none'; }
+        function deleteOrder(id) { if(confirm("Delete?")) db.ref('orders/' + id).remove(); }
+        
+        function startScanner() {
+            const scanner = new Html5Qrcode("reader");
+            scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => { showDetails(text); scanner.stop(); });
         }
     </script>
 </body>
