@@ -2,126 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QR Order Receiver</title>
+    <title>Secure Delivery System</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    
     <style>
         body { font-family: sans-serif; background: #f0f2f5; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-        #admin-panel { display: none; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 20px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 100%; max-width: 400px; margin-bottom: 15px; }
         input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        
-        /* Scanner Area */
-        #scanner-section { width: 100%; max-width: 400px; margin-bottom: 20px; text-align: center; }
-        #reader { width: 100%; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        
-        .order-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 6px solid #ff4757; width: 100%; max-width: 400px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative;}
-        .order-card.received { border-left-color: #2ed573; background: #f0fff4; }
-        .status-tag { font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 12px; }
-        .pending { background: #ffd7d7; color: #ff4757; }
-        .done { background: #d1f7e1; color: #2ed573; }
-        .del-btn { position: absolute; top: 10px; right: 10px; background: none; color: #ddd; border:none; cursor:pointer; font-size: 20px; }
+        #reader { width: 100%; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+        .details-box { display: none; background: #fff3cd; padding: 15px; border-radius: 10px; border: 1px solid #ffeeba; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="admin-panel">
-        <h3 style="margin:0 0 10px 0">Add Order (Manual)</h3>
-        <input type="text" id="orderId" placeholder="Type Order ID here">
+    <!-- Admin Entry -->
+    <div id="admin-panel" style="display:none;" class="card">
+        <h3>Add Order</h3>
+        <input type="text" id="orderId" placeholder="Order ID">
         <input type="text" id="boyName" placeholder="Delivery Boy Name">
         <input type="text" id="deliveryCode" placeholder="Delivery Code">
-        <button onclick="addOrder()">Add to Database</button>
+        <button onclick="addOrder()">Add Order</button>
     </div>
 
-    <div id="scanner-section">
-        <h3>Scan QR to Receive</h3>
+    <!-- Scanner / Search -->
+    <div class="card">
+        <h3>Scan or Search Order</h3>
         <div id="reader"></div>
-        <p id="scan-result" style="color: #666; font-size: 14px; margin-top: 10px;">Camera searching for QR...</p>
+        <input type="text" id="manualSearch" placeholder="Search Order ID..." oninput="fetchOrder(this.value)">
+        
+        <!-- Order Details Show Hogi -->
+        <div id="details" class="details-box">
+            <p><strong>ID:</strong> <span id="d-id"></span></p>
+            <p><strong>Boy:</strong> <span id="d-name"></span></p>
+            <p><strong>Code:</strong> <span id="d-code" style="color:red; font-size:20px; font-weight:bold;"></span></p>
+            <button id="recv-btn" onclick="receiveOrder()" style="background:#28a745">Receive Order</button>
+        </div>
     </div>
-
-    <div id="ordersDisplay" style="width: 100%; max-width: 400px;"></div>
 
     <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDdCyXVO0UzadOwy903RAm6sop8PGroTSw",
-            authDomain: "ordermanagment-4f762.firebaseapp.com",
-            databaseURL: "https://ordermanagment-4f762-default-rtdb.firebaseio.com",
-            projectId: "ordermanagment-4f762",
-            storageBucket: "ordermanagment-4f762.firebasestorage.app",
-            messagingSenderId: "802753575667",
-            appId: "1:802753575667:web:a6ba2ca8f7f5220865d586"
-        };
-
+        const firebaseConfig = { /* Wahi Config yahan paste karein */ };
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Admin view check
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('admin') === 'true') {
-            document.getElementById('admin-panel').style.display = 'block';
-        }
+        // Admin check
+        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('admin-panel').style.display = 'block';
 
-        // Manual Entry
-        function addOrder() {
-            const id = document.getElementById('orderId').value;
-            const name = document.getElementById('boyName').value;
-            const code = document.getElementById('deliveryCode').value;
-            if (id && name && code) {
-                db.ref('orders/' + id).set({ id, name, code, status: 'Pending' });
-                document.querySelectorAll('input').forEach(i => i.value = '');
-            }
-        }
-
-        // QR SCANNER LOGIC (Auto-Receive)
         const html5QrCode = new Html5Qrcode("reader");
-        html5QrCode.start(
-            { facingMode: "environment" }, 
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText) => {
-                // Jaise hi QR scan hoga, ye code chalega
-                markAsReceived(decodedText);
-            }
-        ).catch(err => {
-            document.getElementById('scan-result').innerText = "Camera error: Please allow camera access.";
+        html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (text) => {
+            document.getElementById('manualSearch').value = text;
+            fetchOrder(text);
         });
 
-        function markAsReceived(scannedId) {
-            db.ref('orders/' + scannedId).once('value', (snapshot) => {
-                if (snapshot.exists()) {
-                    db.ref('orders/' + scannedId).update({ status: 'Received' });
-                    document.getElementById('scan-result').innerHTML = `<b style="color:green">SUCCESS: Order ${scannedId} Received!</b>`;
-                    // Beep sound ya vibration (Optional)
-                    if (navigator.vibrate) navigator.vibrate(200);
+        let activeOrderId = "";
+
+        function fetchOrder(id) {
+            db.ref('orders/' + id).once('value', (snap) => {
+                const order = snap.val();
+                if(order && order.status === 'Pending') {
+                    activeOrderId = id;
+                    document.getElementById('details').style.display = 'block';
+                    document.getElementById('d-id').innerText = order.id;
+                    document.getElementById('d-name').innerText = order.name;
+                    document.getElementById('d-code').innerText = order.code;
                 } else {
-                    document.getElementById('scan-result').innerHTML = `<b style="color:red">ERROR: ID ${scannedId} not found in database.</b>`;
+                    document.getElementById('details').style.display = 'none';
                 }
             });
         }
 
-        // Real-time Display
-        db.ref('orders').on('value', (snapshot) => {
-            const display = document.getElementById('ordersDisplay');
-            display.innerHTML = '<h3 style="text-align: center; color: #555;">Live Orders</h3>';
-            const data = snapshot.val();
-            if (data) {
-                Object.keys(data).reverse().forEach(key => {
-                    const o = data[key];
-                    const isDone = o.status === 'Received';
-                    display.innerHTML += `
-                        <div class="order-card ${isDone ? 'received' : ''}">
-                            <button class="del-btn" onclick="deleteOrder('${o.id}')">×</button>
-                            <b>ID:</b> ${o.id} | <b>Code:</b> <span style="color:red">${o.code}</span><br>
-                            <b>Boy:</b> ${o.name} <br>
-                            <span class="status-tag ${isDone ? 'done' : 'pending'}">${o.status}</span>
-                        </div>`;
-                });
-            }
-        });
+        function receiveOrder() {
+            db.ref('orders/' + activeOrderId).update({ status: 'Received' });
+            alert("Order Received Successfully!");
+            location.reload();
+        }
 
-        function deleteOrder(id) { if(confirm("Delete?")) db.ref('orders/' + id).remove(); }
+        function addOrder() {
+            const id = document.getElementById('orderId').value;
+            db.ref('orders/' + id).set({ id, name: document.getElementById('boyName').value, code: document.getElementById('deliveryCode').value, status: 'Pending' });
+            alert("Added!");
+        }
     </script>
 </body>
 </html>
