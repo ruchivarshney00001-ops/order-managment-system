@@ -3,215 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OMNI Delivery Pro</title>
+    <title>OMNI Delivery Pro - Final</title>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        :root {
-            --bg: #f8fafc;
-            --card-bg: #ffffff;
-            --primary: #6366f1;
-            --pending: #ef4444;
-            --success: #10b981;
-            --text-main: #1e293b;
-            --text-sub: #64748b;
-        }
+        :root { --bg: #f8fafc; --card-bg: #ffffff; --primary: #6366f1; --pending: #ef4444; --success: #10b981; --text-main: #1e293b; --text-sub: #64748b; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        
+        .stats-wrapper { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 600px; margin: 15px 0; }
+        .stat-item { background: var(--card-bg); padding: 12px; border-radius: 16px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-bottom: 3px solid #ddd; }
+        .stat-item b { display: block; font-size: 20px; color: var(--primary); }
 
-        body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text-main);
-            margin: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            -webkit-tap-highlight-color: transparent;
-        }
+        .nav-container { position: sticky; top: 10px; z-index: 1000; width: 100%; max-width: 600px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px); border-radius: 20px; padding: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.05); margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .filter-tabs { display: flex; background: #f1f5f9; padding: 4px; border-radius: 12px; margin-bottom: 10px; }
+        .tab { flex: 1; border: none; padding: 10px; border-radius: 10px; font-weight: 600; cursor: pointer; color: var(--text-sub); background: transparent; }
+        .tab.active { background: white; color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        /* Modern Dashboard Stats */
-        .stats-wrapper {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            width: 100%;
-            max-width: 600px;
-            margin: 15px 0;
-        }
+        .order-card { background: var(--card-bg); width: 100%; max-width: 600px; padding: 20px; border-radius: 20px; margin-bottom: 15px; border: 1px solid #e2e8f0; position: relative; transition: 0.3s; }
+        .status-pill { position: absolute; top: 15px; right: 15px; padding: 4px 10px; border-radius: 50px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        .s-pending { background: #fee2e2; color: var(--pending); }
+        .s-done { background: #d1fae5; color: var(--success); }
 
-        .stat-item {
-            background: var(--card-bg);
-            padding: 15px;
-            border-radius: 16px;
-            text-align: center;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-            border: 1px solid #e2e8f0;
-        }
+        .id-box { font-family: monospace; font-size: 13px; background: #f8fafc; padding: 10px; border-radius: 10px; display: block; margin: 10px 0; border: 1px solid #f1f5f9; word-break: break-all; }
+        .info-row { display: flex; justify-content: space-between; margin-top: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 5px; }
+        .label { font-size: 11px; color: var(--text-sub); font-weight: 700; text-transform: uppercase; }
+        .value { font-weight: 600; font-size: 15px; }
 
-        .stat-item b {
-            display: block;
-            font-size: 22px;
-            color: var(--primary);
-            margin-top: 5px;
-        }
+        input { width: 100%; padding: 14px; border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 16px; margin: 8px 0; box-sizing: border-box; }
+        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; font-size: 15px; transition: 0.3s; }
+        .btn-p { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .btn-s { background: var(--success); color: white; margin-top: 15px; }
 
-        /* Glassmorphism Navigation */
-        .nav-container {
-            position: sticky;
-            top: 10px;
-            z-index: 1000;
-            width: 100%;
-            max-width: 600px;
-            backdrop-filter: blur(10px);
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 20px;
-            padding: 10px;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        .filter-tabs {
-            display: flex;
-            background: #f1f5f9;
-            padding: 4px;
-            border-radius: 12px;
-            margin-bottom: 10px;
-        }
-
-        .tab {
-            flex: 1;
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            color: var(--text-sub);
-            background: transparent;
-        }
-
-        .tab.active {
-            background: var(--card-bg);
-            color: var(--primary);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        /* Premium Card Design */
-        .order-card {
-            background: var(--card-bg);
-            width: 100%;
-            max-width: 600px;
-            padding: 24px;
-            border-radius: 24px;
-            margin-bottom: 16px;
-            box-sizing: border-box;
-            border: 1px solid #e2e8f0;
-            position: relative;
-            transition: transform 0.2s;
-        }
-
-        .order-card:active { transform: scale(0.98); }
-
-        .status-pill {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            padding: 4px 12px;
-            border-radius: 50px;
-            font-size: 11px;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-
-        .status-pending { background: #fee2e2; color: var(--pending); }
-        .status-done { background: #d1fae5; color: var(--success); }
-
-        .id-text {
-            font-family: 'SF Mono', monospace;
-            font-size: 14px;
-            background: #f8fafc;
-            padding: 12px;
-            border-radius: 12px;
-            display: block;
-            margin: 10px 0;
-            color: var(--text-main);
-            word-break: break-all;
-            border: 1px solid #f1f5f9;
-        }
-
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .label { font-size: 11px; color: var(--text-sub); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
-        .value { font-size: 16px; font-weight: 600; display: block; margin-top: 2px; }
-
-        /* Buttons & Inputs */
-        input {
-            width: 100%;
-            padding: 14px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 14px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-            margin: 8px 0;
-            box-sizing: border-box;
-        }
-
-        input:focus { outline: none; border-color: var(--primary); }
-
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 16px;
-            font-weight: 700;
-            width: 100%;
-            cursor: pointer;
-            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
-        }
-
-        .btn-success { background: var(--success); margin-top: 15px; }
-
-        #reader { width: 100%; border-radius: 20px; overflow: hidden; margin-bottom: 15px; }
-
-        .time { font-size: 11px; color: var(--text-sub); margin-top: 15px; text-align: right; }
+        /* Scanned Details Overlay */
+        #verify-overlay { display: none; background: #fffbeb; border: 2px solid #fbbf24; }
+        #reader { width: 100%; border-radius: 15px; overflow: hidden; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
     <div class="stats-wrapper">
-        <div class="stat-item" style="border-top: 4px solid var(--primary)">Total <b id="stat-t">0</b></div>
-        <div class="stat-item" style="border-top: 4px solid var(--pending)">Pending <b id="stat-p">0</b></div>
-        <div class="stat-item" style="border-top: 4px solid var(--success)">Done <b id="stat-d">0</b></div>
+        <div class="stat-item">Total <b id="st-t">0</b></div>
+        <div class="stat-item">Pending <b id="st-p">0</b></div>
+        <div class="stat-item">Done <b id="st-d">0</b></div>
     </div>
 
     <div class="nav-container">
         <div class="filter-tabs">
-            <button class="tab active" onclick="updateFilter('all', this)">All</button>
-            <button class="tab" onclick="updateFilter('Pending', this)">Pending</button>
-            <button class="tab" onclick="updateFilter('Received', this)">Received</button>
+            <button class="tab active" onclick="setF('all', this)">All</button>
+            <button class="tab" onclick="setF('Pending', this)">Pending</button>
+            <button class="tab" onclick="setF('Received', this)">Received</button>
         </div>
-        <input type="text" id="search" placeholder="🔍 Search Order ID..." oninput="handleSearch(this.value)">
+        <input type="text" id="srch" placeholder="🔍 Search Order ID..." oninput="srch(this.value)">
     </div>
 
-    <div id="admin" class="order-card" style="display:none; border: 2px dashed var(--primary); background: #fdfdfd;">
-        <h3 style="margin:0 0 10px 0">New Dispatch</h3>
-        <input type="text" id="in-id" placeholder="Order ID">
-        <input type="text" id="in-name" placeholder="Delivery Boy">
+    <!-- Admin Entry -->
+    <div id="adm" class="order-card" style="display:none; border-style: dashed; border-color: var(--primary);">
+        <h3 style="margin:0 0 10px 0">New Entry</h3>
+        <input type="text" id="in-id" placeholder="Full Order ID">
+        <input type="text" id="in-name" placeholder="Boy Name">
         <input type="text" id="in-code" placeholder="Delivery OTP">
-        <button class="btn-primary" onclick="pushOrder()">Dispatch Order</button>
+        <button class="btn btn-p" onclick="add()">Save Order</button>
     </div>
 
+    <!-- Scanner & Verifier -->
     <div class="order-card">
         <div id="reader"></div>
-        <button class="btn-primary" style="background:#475569" onclick="openCam()">📷 Scan QR Code</button>
+        <button class="btn btn-p" style="background:#475569" onclick="scan()">📷 Open Camera Scanner</button>
+        
+        <!-- Scan hone ke baad ye box dikhega -->
+        <div id="verify-overlay" class="order-card" style="margin-top:15px; width:100%; max-width:100%; box-shadow:none;">
+            <h4 style="margin:0; color:#92400e;">Order Found! Verify Details:</h4>
+            <div class="id-box" id="v-id"></div>
+            <div class="info-row"><span class="label">Delivery Boy</span><span class="value" id="v-name"></span></div>
+            <div class="info-row"><span class="label">Secret OTP</span><span class="value" id="v-code" style="color:red; font-size:22px;"></span></div>
+            <button class="btn btn-s" onclick="confirmRecv()">YES, RECEIVE ORDER ✅</button>
+            <button class="btn" style="background:#ccc; margin-top:10px;" onclick="cancelV()">CANCEL</button>
+        </div>
     </div>
 
     <div id="list" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
@@ -229,62 +97,59 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        let data = {};
-        let filter = 'all';
+        let orders = {};
+        let activeFilter = 'all';
+        let currentVerifyId = "";
 
-        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('admin').style.display = 'block';
+        if (new URLSearchParams(window.location.search).get('admin') === 'true') document.getElementById('adm').style.display = 'block';
 
         db.ref('orders').on('value', (snap) => {
-            data = snap.val() || {};
-            renderUI();
+            orders = snap.val() || {};
+            render();
         });
 
-        function renderUI() {
+        function render() {
             const list = document.getElementById('list');
             list.innerHTML = "";
             let t=0, p=0, d=0;
 
-            Object.keys(data).sort((a,b) => (data[b].ts || 0) - (data[a].ts || 0)).forEach(id => {
-                const o = data[id];
+            Object.keys(orders).sort((a,b) => (orders[b].ts || 0) - (orders[a].ts || 0)).forEach(id => {
+                const o = orders[id];
                 t++; o.status === 'Pending' ? p++ : d++;
+                if(activeFilter !== 'all' && o.status !== activeFilter) return;
 
-                if(filter !== 'all' && o.status !== filter) return;
-
-                const isDone = o.status === 'Received';
+                const isD = o.status === 'Received';
                 list.innerHTML += `
-                    <div class="order-card" id="c-${id}">
-                        <div class="status-pill ${isDone?'status-done':'status-pending'}">${o.status}</div>
-                        <span class="label">Invoice ID</span>
-                        <span class="id-text">${id}</span>
-                        <div class="info-grid">
-                            <div><span class="label">Agent</span><span class="value">${o.name}</span></div>
-                            <div><span class="label">Secret Code</span><span class="value" style="color:var(--pending);font-size:20px">${o.code}</span></div>
-                        </div>
-                        ${!isDone ? `<button class="btn-primary btn-success" onclick="mark('${id}')">Verify & Receive</button>` : ''}
-                        <div class="time">${new Date(o.ts).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} | ${new Date(o.ts).toLocaleDateString()}</div>
-                        <button onclick="rem('${id}')" style="position:absolute; bottom:20px; left:20px; background:none; border:none; color:#cbd5e1; cursor:pointer">Delete</button>
+                    <div class="order-card" id="card-${id}">
+                        <div class="status-pill ${isD?'status-done':'status-pending'}">${o.status}</div>
+                        <span class="label">Order ID</span>
+                        <span class="id-box">${id}</span>
+                        <div class="info-row"><span class="label">Boy</span><span class="value">${o.name}</span></div>
+                        <div class="info-row"><span class="label">OTP</span><span class="value" style="color:var(--pending)">${o.code}</span></div>
+                        ${!isD ? `<button class="btn btn-s" onclick="preVerify('${id}')">Show Details & Receive</button>` : ''}
+                        <button onclick="del('${id}')" style="margin-top:15px; background:none; border:none; color:#cbd5e1; cursor:pointer; font-size:12px;">Delete Data</button>
                     </div>`;
             });
-            document.getElementById('stat-t').innerText = t;
-            document.getElementById('stat-p').innerText = p;
-            document.getElementById('stat-d').innerText = d;
+            document.getElementById('st-t').innerText = t;
+            document.getElementById('st-p').innerText = p;
+            document.getElementById('st-d').innerText = d;
         }
 
-        function handleSearch(val) {
-            document.querySelectorAll('.order-card[id^="c-"]').forEach(el => {
-                const id = el.id.replace('c-', '');
-                el.style.display = id.includes(val) ? 'block' : 'none';
+        // Search highlight
+        function srch(v) {
+            document.querySelectorAll('[id^="card-"]').forEach(el => {
+                el.style.display = el.id.toLowerCase().includes(v.toLowerCase()) ? 'block' : 'none';
             });
         }
 
-        function updateFilter(f, btn) {
-            filter = f;
+        function setF(f, btn) {
+            activeFilter = f;
             document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            renderUI();
+            render();
         }
 
-        function pushOrder() {
+        function add() {
             const id = document.getElementById('in-id').value.trim();
             const name = document.getElementById('in-name').value.trim();
             const code = document.getElementById('in-code').value.trim();
@@ -294,13 +159,41 @@
             }
         }
 
-        function mark(id) { if(confirm("Confirm delivery?")) db.ref('orders/' + id).update({ status: 'Received' }); }
-        function rem(id) { if(confirm("Permanently delete?")) db.ref('orders/' + id).remove(); }
+        // Verification Logic
+        function preVerify(id) {
+            const o = orders[id];
+            if(o) {
+                currentVerifyId = id;
+                document.getElementById('verify-overlay').style.display = 'block';
+                document.getElementById('v-id').innerText = id;
+                document.getElementById('v-name').innerText = o.name;
+                document.getElementById('v-code').innerText = o.code;
+                window.scrollTo(0,0);
+            }
+        }
 
-        function openCam() {
+        function confirmRecv() {
+            db.ref('orders/' + currentVerifyId).update({ status: 'Received' });
+            cancelV();
+            alert("Order Received Successfully!");
+        }
+
+        function cancelV() {
+            document.getElementById('verify-overlay').style.display = 'none';
+            currentVerifyId = "";
+        }
+
+        function del(id) { if(confirm("Permanently delete?")) db.ref('orders/' + id).remove(); }
+
+        function scan() {
             const scanner = new Html5Qrcode("reader");
             scanner.start({ facingMode: "environment" }, { fps: 15, qrbox: 250 }, (text) => {
-                if(data[text]) { mark(text); scanner.stop(); } else { alert("ID not found!"); }
+                if(orders[text]) {
+                    preVerify(text);
+                    scanner.stop();
+                } else {
+                    alert("Order ID not found in database!");
+                }
             });
         }
     </script>
